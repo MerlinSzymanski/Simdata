@@ -1,0 +1,23 @@
+{
+	"B":{
+		"Ends":{
+			"Positions":3 , 
+			"Propability": 0.5
+			},
+		"Center":{
+			"Probability":0
+			}
+		}
+	},
+	"C":{
+		"Ends":{
+			"Positions":3 , 
+			"Propability": 0.5
+			},
+		"Center":{
+			"Probability":0.1
+			}
+		}
+	},
+
+}
