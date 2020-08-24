@@ -1,56 +1,158 @@
 from pathlib import Path
-from Bio import Entrez
-
-from . import chunk_genome
-import re, os, sys, shutil, random
-import json, requests, gzip
+from Bio import (Entrez, SeqIO)
+from Bio.Seq import Seq
+import requests
+import gzip
+import io
+import sys
 from bs4 import BeautifulSoup
+from Scripts import (chunk_genome, settings)
+import random
+import itertools
+import os
 
 
-def download_genome(acc):
-	"""This function downloads a genome from NCBI based on the Accession number
-	Args:
-		acc:	NCBI Accession Number of the genome you want
+def create_samfiles(directory):
+    """
+    Creates a samfile from the fastafiles within a directory.
+    Args:
+        directory:  The path to the directory with the fasta-files
+    Returns: True on success
+    """
+    for infile in directory.glob("*.fas"):
+        with open(directory.joinpath(f"{infile.stem}.sam"), "w") as outsam:
+            fasta = SeqIO.parse(open(infile), "fasta")
+            for record in fasta:
+                quality = "]" * len(record.seq)
+                line = f"{record.description}\t4\t*\t0\t0\t*\t*\t0\t0\t" \
+                       f"{record.seq}\t{quality}\tXI:Z:TAATCAT\tYI:Z:]]]]]]]\tXJ:Z:TCATGGT\t" \
+                       f"YJ:Z:]]]]]]]\tRG:Z:Simdata\tNM:i:0\n"
+                outsam.write(line)
+        infile.unlink()
+    with open(directory.joinpath("indexfile.tsv"), "w") as indexfile:
+        indexfile.write("#Index\tlibID\tprimer_p7\tprimer_p5\nSimdata\t368\t34\trandom\n")
+    return True
 
-	Returns:
-				True on success
-	"""
-	soup = BeautifulSoup(requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=nucleotide&db=taxonomy&id='+acc).text)
-	seq_id = soup.find("idlist").find("id").contents[0]
 
-	Entrez.email = "merlin.szymanski@gmail.com"
-	infile = Entrez.efetch(db="Nucleotide", id=seq_id, rettype="fasta")
+def merge_snippets(directory):
+    """
+    This process groups all genome-snippets from mammals and contaminants by
+    Dataset and Regime identifier and merges them into one Dataset (each)
+    Args:
+        directory: The directory in which the chunked and deaminated genomes are stored
 
-	#TODO: GZIP CRASHES
-	with gzip.open(f"Database/Sequence_{acc}.fas.gz", "wb") as out:
-		data = bytes(infile.readlines(), encode="UTF-8")
-		out.write(data)
+    Returns True after the process is done
+    """
+    # Gather all Datasets and all Conditions
+    datasets = set([x.split("_")[0] for x in os.listdir(directory)])
+    regimes = set([x.split("_")[1] for x in os.listdir(directory)])
 
-	return True
+    for ds, reg in list(itertools.product(datasets, regimes)):
+        outpath = directory / Path(f"Dataset_{ds}_{reg}.fas")
+        with open(outpath, "w") as outfile:
+            for path in Path(directory).glob(f"{ds}_{reg}*"):
+                for record in SeqIO.parse(open(path), "fasta"):
+                    SeqIO.write(record, outfile, "fasta")
+                Path(path).unlink(missing_ok=True)
+    return True
 
 
-def make(id, data):
-	""" The main function of this module. It creates a Dataset based on the 
-	json file provied.
-	
-	Args: 	
-		id: 	Identifier of the Dataset [int]
-		data: 	Dict with the following structure:
-				{Accession:{Reads:1000,Deamination:{B:0,C:0}}}, Accession: {...}}
-	Returns: 
-		True on success
-	"""
+def deaminate_genome(inpath, outpath, positions=3, prop=0.5, inner=False, prop2=0):
+    """
+    Deaminate a Sequence
+    Args:
+        inpath:       The chunked genome [path]
+        outpath:    The name of the output-file
+        positions:   Number of positions checked for deamination [int]
+        prop:        Chance for a C to T substitution [float]
+        inner:       Also deaminate inner Cs? [bool]
+        prop2:      With that chance [float]
 
-	dataset = Path("Datasets"/f"Dataset{id}")
-	#Todo create 3 temp dirs A,B and C
+    Returns the deaminated Sequence
+    """
+    print(inpath, outpath, positions, prop, inner, prop2)
+    return True  # TODO: Remove this as soon as the infile works
+    infile = SeqIO.parse(open(inpath), "fasta")
+    with open(outpath, "w") as outfile:
+        for record in infile:
 
-	for accession in data:
-		#1. get the right mt genome
-		#2. chunk it
+            new_seq = [x for x in str(record.seq)]
 
-		#for regime in deamination
-			#for read in chunked_genome
-				#3. deaminate and put into corresponding directory
+            for n in range(positions):
+                new_seq[n] = "T" if new_seq[n] == "C" and random.random() < prop else new_seq[n]
+                new_seq[-n - 1] = "T" if new_seq[-n - 1] == "C" and random.random() < prop else new_seq[n]
 
-	#bundle everything together
-		return True
+            if inner:
+                for n in range(positions + 1, len(new_seq) - positions):
+                    new_seq[n] = "T" if new_seq[n] == "C" and random.random() < prop2 else new_seq[n]
+            record._set_seq(Seq("".join(new_seq)))
+            SeqIO.write(record, outfile, "fasta")
+    return True
+
+
+def download_genome(acc, savedir="Database"):
+    """Download a genome based on the NCBI Accession number
+    Args:
+        acc:	    NCBI Accession Number of the genome you want
+        savedir:    Optional: specify the location/directory for the file
+
+    Returns True on Success
+    """
+    soup = BeautifulSoup(requests.get(
+        'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=nucleotide&db=taxonomy&id=' + acc).text,
+                         features="html.parser")
+    try:
+        seq_id = soup.find("idlist").find("id").contents[0]
+    except AttributeError:
+        print(f"Error: Accession Number {acc} not found", file=sys.stderr)
+        return False
+
+    Entrez.email = settings.EMAIL
+    infile = Entrez.efetch(db="Nucleotide", id=seq_id, rettype="fasta")
+    infile2 = io.BytesIO(bytes(infile.read(), encoding="utf-8"))
+
+    Path(savedir).mkdir(exist_ok=True, parents=True)
+    savedir = str(Path(savedir) / f"Sequence_{acc}.fas.gz")
+
+    handle = gzip.open(savedir, "wb")
+    handle.write(infile2.read())
+    handle.close()
+
+    return True
+
+
+def make(ds_id, data, deamination, outdir="Datasets"):
+    """Create a Dataset based on the
+    json file provided.
+
+    Args:
+        deamination: Dict with the Deamination Settings
+        ds_id: 	Identifier of the Dataset
+        data: 	Dict with the following structure:
+                {Accession:{Reads:1000,deamination:{B:0,C:0}}}, Accession: {...}}
+        outdir: Directory where to save the created Datasets (default: Datasets)
+
+    Writes all the files to the file-system and returns True on success
+    """
+    datasets = Path(outdir)
+    datasets.mkdir(exist_ok=True)
+
+    for acc in data:
+        if f"Sequence_{acc}.fas.gz" not in [x.name for x in datasets.glob("*.gz")] and acc != "Contamination":
+            while True:
+                if download_genome(acc):
+                    break
+        print(f"Processing File Sequence_{acc}.fas.gz", end="\r", file=sys.stderr)
+        # TODO: Chunk this thing up
+        chunked_genome = "out of freds script"
+        # TODO: Have the chunked genome as a file!
+        for setup in data[acc]["Deamination"]:
+            save_file = datasets.joinpath(f"{ds_id}_{setup}_{acc}.fas")
+
+            deaminate_genome(chunked_genome, save_file, positions=deamination[setup]["Ends"]["Positions"],
+                             prop=deamination[setup]["Ends"]['Probability'],
+                             inner=True, prop2=deamination[setup]["Center"]['Probability'])
+
+    merge_snippets(datasets)
+    create_samfiles(datasets)
+    return True

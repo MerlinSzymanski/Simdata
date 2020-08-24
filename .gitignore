@@ -1,3 +1,4 @@
 Datasets/
 Database/
-
+.idea/
+*__pycache__*

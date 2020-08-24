@@ -5,15 +5,8 @@ import numpy as np
 import pandas as pd
 import random
 import sys
-import pysam
 import re
 import argparse
-
-
-# 30,000,000 with 99% bacteria => 99% bacteria, 0.5% hyena, 0.3% cow, 0.15% pig, 0.04% mammoth, 0.01% Human
-# 0.5 -> 95912 0.3% -> 9913, 0.15% -> 9823, 0.04 -> 9785 0.01,  -> 9606
-
-# tabl['A'].loc[30][tabl['A'].loc[30]>=0.0003].idxmin()
 
 random.seed()
 
@@ -23,9 +16,10 @@ def get_sequence_with_substitution(sequence):
     choices = np.random.random(read_length)
     positions = np.concatenate([np.arange(15), np.arange(29, 14, -1)])
     positions = np.insert(positions, 15, np.full(read_length - 30, 30))
-    newSeq = [''] * read_length  # working on list is faster
-    #same_nuc = 1-min([min([tabl[x][pos][x] for pos in range(1,30)]) for x in tabl])
-    #same_nuc = {nc: 1-prob for nc, prob in zip(['A','C','G','T'],min([[tabl[x][pos][x] for x in tabl] for pos in range(1,30)]))}
+    new_seq = [''] * read_length  # working on list is faster
+    # same_nuc = 1-min([min([tabl[x][pos][x] for pos in range(1,30)]) for x in tabl])
+    # same_nuc = {nc: 1-prob for nc, prob in zip(['A','C','G','T'],min([[tabl[x][pos][x] for x in tabl]
+    # for pos in range(1,30)]))}
 
     # max_other = min([tabl[x][tabl[x]<same_nuc].max() for x in tabl])# this
     # is the highest value. Anything above we sample the same nuc
@@ -35,14 +29,14 @@ def get_sequence_with_substitution(sequence):
         # TODO optimize speed for pos '30': if prob > max(nc over 30 pos), no matter which
         # base, just use nc
         if choice <= same_nuc[nc]:
-            newSeq[idx] = nc
+            new_seq[idx] = nc
         else:
             t = tabl[nc].loc[pos].cumsum()
             try:
-                newSeq[idx] = t[choice < t].idxmin()
+                new_seq[idx] = t[choice < t].idxmin()
             except:  # rounding error when over choice 0.999999
-                newSeq[idx] = t.idxmax()
-    return Seq(''.join(newSeq))
+                new_seq[idx] = t.idxmax()
+    return Seq(''.join(new_seq))
     # returns the base relative to our random number for position pos given
     # the real base is nc
 
@@ -67,8 +61,9 @@ def get_map_pos(n_samples, map_file="/tmp/fred/map_track.bed.gz"):
             sample = record[int(pos[1]):int(pos[2])]
             all_chunks += [(sample, pos[1])]
 
-    record_it = (SeqRecord.SeqRecord(record.seq, id="{}|{}_{}|SGDP".format(record.id, pos, len(record)),
-                                     description=" ".join(record.description.split(' ')[1:])) for record, pos in all_chunks)
+    record_it = (SeqRecord.SeqRecord(
+        record.seq, id="{}|{}_{}|SGDP".format(record.id, pos, len(record)),
+        description=" ".join(record.description.split(' ')[1:])) for record, pos in all_chunks)
     with open('/tmp/fred/human.fa', 'w') as file_out:
         SeqIO.write(record_it, file_out, "fasta")
 
@@ -81,9 +76,10 @@ def sort_recs(recs, split_char="|"):
         # our header is >16|69694935_57|Nea ...
         # use split to access the first element
         return item.id.split(split_char)[0]
-    #print(recs)
-    #return sorted(recs, key=sort_func)
+    # print(recs)
+    # return sorted(recs, key=sort_func)
     return recs
+
 
 def simulate_deamination(sequence, nbases=3):
     while "C" in sequence[:nbases]:  # 5' C to T
@@ -94,31 +90,39 @@ def simulate_deamination(sequence, nbases=3):
 
 
 def mutate_unif(sequence, unif):
+    """
+    Create uniform distributed random mutations in the sequence
+    Args:
+        sequence:       The DNA-Sequence to be mutated
+        unif [bool]:    Number between 0 and 1, chance for a mutation to occur
+
+    Returns the mutated Sequence
+    """
     same_nuc = set("ACGT")
-    read_length = len(sequence)
-    # choices is an array of True/False
-    # we will mutate if or sample is < unif
-    choices = np.random.random(read_length) < unif
-    newSeq = [''] * read_length
+
+    choices = np.random.random(len(sequence)) < unif
+    new_seq = [''] * len(sequence)
+
     for idx, nc in enumerate(sequence):
         mutate = choices[idx]
         if mutate:
-            # we call tuple in order to do random.choice (and remove the current nc from the possibilities)
-            newSeq[idx] = random.choice(tuple(same_nuc.difference(nc)))
+            new_seq[idx] = random.choice(tuple(same_nuc.difference(nc)))
         else:
-            newSeq[idx] = nc
-    return Seq(''.join(newSeq))
+            new_seq[idx] = nc
+    return Seq(''.join(new_seq))
 
 
 # the idea is to generate a set of coordinates/size pairs and only take those substrings:
 # sample 0:length_genome (N = #chunks desired)
 # sample N sizes (N = chunks desired)
-def chunk_fast(record, n_samples, vcf_in=None, chrom=None, individual=0, unif=False, len_distrib=False, deaminate=0, minlength=35, maxlength=100):
+
+def chunk_fast(record, n_samples, vcf_in=None, chrom=None, individual=0, unif=False,
+               len_distrib=False, deaminate=0, minlength=35, maxlength=100):
     try:
         positions = random.sample(range(0, len(record)-minlength), n_samples)
     except:
-        print("sample too small {}bp, sampling {} reads with replacements".format(len(record) -
-                                                                                  minlength, n_samples), file=sys.stderr)
+        print("sample too small {}bp, sampling {} reads with replacements".format(
+            len(record) - minlength, n_samples), file=sys.stderr)
         positions = [random.choice(range(0, len(record) - minlength))
                      for _ in range(n_samples)]
     if len_distrib:  # we gave a file with distribution per length
@@ -157,7 +161,6 @@ def chunk_fast(record, n_samples, vcf_in=None, chrom=None, individual=0, unif=Fa
                 # print(record[vcf_rec.start-3:vcf_rec.start+4].seq,vcf_rec.ref,vcf_rec.alts,vcf_rec.start,
                 # pos, l) # debug purpose
             else:  # we use a variation probability matrix
-                read_length = len(sequence)
                 sample.seq = get_sequence_with_substitution(sequence)
         if deaminate:
             sample.seq = simulate_deamination(
@@ -199,7 +202,7 @@ def estimate_read_distribution(file_in, num_seq, n_chromosomes=None):
                     full_size = sum(fa.lengths)
                     size_percent = [
                         int(s / full_size * num_seq) + 1 for s in fa.lengths]
-            return (size_percent)
+            return size_percent
     except OSError:  # fasta is not bgzip'd do a naive fallback
         print("Error, fasta file not indexed, doing naive sampling...",
               file=sys.stderr)
@@ -213,7 +216,7 @@ def estimate_read_distribution(file_in, num_seq, n_chromosomes=None):
 
 def main():
     # Process command line
-    parser = argparse.ArgumentParser(description='Split a genome into chuncks')
+    parser = argparse.ArgumentParser(description='Split a genome into chunks')
     parser.add_argument('--num_seq', default=0, type=int,
                         help='Number of sequences to output')
     parser.add_argument(
@@ -256,14 +259,15 @@ def main():
         # a mutation
         global same_nuc
         # e.g.
-        # 'A': 0.00797800000000004, -> ~0.79% chances to have a mutation, any sampled number above this would result in keeping the nc
+        # 'A': 0.00797800000000004, -> ~0.79% chances to have a mutation,
+        # any sampled number above this would result in keeping the nc
         # this allows us to optimize the algorithm by not using the lookup
         # table and directly keep the nc.
         same_nuc = {nc: prob for nc, prob in zip(tabl.columns, min(
             [[tabl[x][pos][x] for x in tabl] for pos in range(31)]))}
 
-    num_reads_to_sample = estimate_read_distribution(
-        args.file_in, args.num_seq, args.chromosomes)
+    num_reads_to_sample = estimate_read_distribution(args.file_in, args.num_seq, args.chromosomes)
+
     with gzip.open(args.file_in, "rt") as file_in:
         all_chunks = []
         vcf_in = args.substitution_file  # will be none if we use a VCF file
@@ -292,8 +296,11 @@ def main():
                 else:
                     chrom = chrom.group()[len('chromosome '):-1]
             
-            all_chunks += chunk_fast(record, num_reads_to_sample[
-                                         num_record], vcf_in, chrom, unif=args.unif, deaminate=args.deaminate, len_distrib=args.length, minlength=args.minlen, maxlength=args.maxlen)
+            all_chunks += chunk_fast(
+                record, num_reads_to_sample[num_record], vcf_in, chrom, unif=args.unif,
+                deaminate=args.deaminate, len_distrib=args.length, minlength=args.minlen,
+                maxlength=args.maxlen)
+
             if num_record % 100 == 99:  # show progress
                 print(num_record + 1, "sequences parsed...",
                       end="\r", file=sys.stderr)
@@ -305,11 +312,12 @@ def main():
                 all_chunks = random.sample(all_chunks, args.num_seq)
         except ValueError:
             print("Returning only {} sequences for {}".
-                  format(len(all_chunks, record.id)), file=sys.stderr)
+                  format(len(all_chunks), record.id), file=sys.stderr)
     print("Done\nWritting down records...", end="", file=sys.stderr)
     # create a new header which includes the read pos, read length
-    record_it = (SeqRecord.SeqRecord(record.seq, id="{}|{}_{}".format(record.id, pos, len(record)),
-                                     description=" ".join(record.description.split(' ')[1:])) for record, pos in sort_recs(all_chunks))
+    record_it = (SeqRecord.SeqRecord(
+        record.seq, id="{}|{}_{}".format(record.id, pos, len(record)),
+        description=" ".join(record.description.split(' ')[1:])) for record, pos in sort_recs(all_chunks))
     if args.outfile:
         with open(args.outfile, 'w') as file_out:
             SeqIO.write(record_it, file_out, "fasta")
