@@ -70,8 +70,6 @@ def deaminate_genome(inpath, outpath, positions=3, prop=0.5, inner=False, prop2=
 
     Returns the deaminated Sequence
     """
-    print(inpath, outpath, positions, prop, inner, prop2)
-    return True  # TODO: Remove this as soon as the infile works
     infile = SeqIO.parse(open(inpath), "fasta")
     with open(outpath, "w") as outfile:
         for record in infile:
@@ -134,24 +132,40 @@ def make(ds_id, data, deamination, outdir="Datasets"):
 
     Writes all the files to the file-system and returns True on success
     """
+    database = Path("Database")
     datasets = Path(outdir)
     datasets.mkdir(exist_ok=True)
 
     for acc in data:
-        if f"Sequence_{acc}.fas.gz" not in [x.name for x in datasets.glob("*.gz")] and acc != "Contamination":
-            while True:
-                if download_genome(acc):
-                    break
+        if f"Sequence_{acc}.fas.gz" not in [x.name for x in database.glob("*.gz")]:
+            if acc != "Contamination":
+                while True:
+                    if download_genome(acc, savedir=database):
+                        break
+            else:
+                # TODO: download contamination method
+                test = 0
+        if acc == "Contamination":  # TODO: remove, as soon as contamination fasta exists
+            continue
         print(f"Processing File Sequence_{acc}.fas.gz", end="\r", file=sys.stderr)
-        # TODO: Chunk this thing up
-        chunked_genome = "out of freds script"
-        # TODO: Have the chunked genome as a file!
-        for setup in data[acc]["Deamination"]:
-            save_file = datasets.joinpath(f"{ds_id}_{setup}_{acc}.fas")
+        infile = database.joinpath(f"Sequence_{acc}.fas.gz")
+        outfile = datasets.joinpath(f"Sequence_{acc}_chunked.fas")
+        num_seq = data[acc]["Reads"]
+        length = Path("Settings/read_length_dist.tsv")
+        chromosomes = 1 if acc != "Contamination" else 136  # TODO: Check the number
+        minlen = 35
+        maxlen = 100
+        unif = 0.01
 
-            deaminate_genome(chunked_genome, save_file, positions=deamination[setup]["Ends"]["Positions"],
-                             prop=deamination[setup]["Ends"]['Probability'],
-                             inner=True, prop2=deamination[setup]["Center"]['Probability'])
+        check = chunk_genome.main(infile, outfile, num_seq, length, chromosomes, minlen, maxlen, unif)
+        if check:
+            for setup in data[acc]["Deamination"]:
+                save_file = datasets.joinpath(f"{ds_id}_{setup}_{acc}_chunked.fas")
+
+                deaminate_genome(outfile, save_file, positions=deamination[setup]["Ends"]["Positions"],
+                                 prop=deamination[setup]["Ends"]['Probability'],
+                                 inner=True, prop2=deamination[setup]["Center"]['Probability'])
+        outfile.unlink()
 
     merge_snippets(datasets)
     create_samfiles(datasets)
