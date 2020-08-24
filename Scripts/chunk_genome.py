@@ -55,7 +55,7 @@ def chunk_fast(record, n_samples, unif=None, len_distrib=None, minlength=35, max
         p = read_len_distrib(len_distrib, minlength, maxlength)
         length = np.random.choice(np.arange(minlength, maxlength + 1), n_samples, p=p)
     else:
-        length = [random.choice(range(minlength, maxlength + 1)) for k in range(n_samples)]
+        length = [random.choice(range(minlength, maxlength + 1)) for _ in range(n_samples)]
 
     all_samples = []
     for pos, size in zip(positions, length):
@@ -66,7 +66,7 @@ def chunk_fast(record, n_samples, unif=None, len_distrib=None, minlength=35, max
                     np.arange(minlength, maxlength + 1), 1, p=p)[0]
             else:
                 size = random.choice(range(minlength, maxlength + 1))
-        sample = record[pos:pos + l]
+        sample = record[pos:pos + size]
 
         if unif:
             sample.seq = mutate_unif(sample.seq.tomutable(), unif)

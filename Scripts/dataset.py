@@ -10,6 +10,7 @@ from Scripts import (chunk_genome, settings)
 import random
 import itertools
 import os
+import json
 
 
 def create_samfiles(directory):
@@ -34,23 +35,22 @@ def create_samfiles(directory):
     return True
 
 
-def merge_snippets(directory):
+def merge_snippets(directory, ds_id, regimes):
     """
     This process groups all genome-snippets from mammals and contaminants by
     Dataset and Regime identifier and merges them into one Dataset (each)
     Args:
+        regimes: a list of regimes
+        ds_id: the identifier of the dataset
         directory: The directory in which the chunked and deaminated genomes are stored
 
     Returns True after the process is done
     """
-    # Gather all Datasets and all Conditions
-    datasets = set([x.split("_")[0] for x in os.listdir(directory)])
-    regimes = set([x.split("_")[1] for x in os.listdir(directory)])
 
-    for ds, reg in list(itertools.product(datasets, regimes)):
-        outpath = directory / Path(f"Dataset_{ds}_{reg}.fas")
+    for reg in list(regimes):
+        outpath = directory / Path(f"Dataset_{ds_id}_{reg}.fas")
         with open(outpath, "w") as outfile:
-            for path in Path(directory).glob(f"{ds}_{reg}*"):
+            for path in Path(directory).glob(f"{ds_id}_{reg}*"):
                 for record in SeqIO.parse(open(path), "fasta"):
                     SeqIO.write(record, outfile, "fasta")
                 Path(path).unlink(missing_ok=True)
@@ -78,7 +78,7 @@ def deaminate_genome(inpath, outpath, positions=3, prop=0.5, inner=False, prop2=
 
             for n in range(positions):
                 new_seq[n] = "T" if new_seq[n] == "C" and random.random() < prop else new_seq[n]
-                new_seq[-n - 1] = "T" if new_seq[-n - 1] == "C" and random.random() < prop else new_seq[n]
+                new_seq[-n - 1] = "T" if new_seq[-n - 1] == "C" and random.random() < prop else new_seq[-n - 1]
 
             if inner:
                 for n in range(positions + 1, len(new_seq) - positions):
@@ -115,8 +115,41 @@ def download_genome(acc, savedir="Database"):
     handle = gzip.open(savedir, "wb")
     handle.write(infile2.read())
     handle.close()
-
     return True
+
+
+def download_contaminants(savedir="Database"):
+    outfile = gzip.open(Path(savedir).joinpath("Sequence_Contamination.fas.gz"), "wb")
+    acclist = [x.replace("\n", "") for x in open("Settings/contamination_list.txt")]
+    Entrez.email = settings.EMAIL
+    chromosomes = len(acclist)
+    for i in range(len(acclist)):
+        bacterium = acclist[i]
+        try:
+            handle = Entrez.esearch(db="nucleotide", term=bacterium)
+            record = Entrez.read(handle)
+            handle.close()
+            acc = record["IdList"][0]
+        except IndexError:
+            chromosomes -= 1
+            continue
+        print(f"Create contamination Dataset. Download Sequence {i+1}/{len(acclist)}", end="\r", file=sys.stderr)
+        if download_genome(acc, savedir):
+            bact = Path(savedir).joinpath(f"Sequence_{acc}.fas.gz")
+            # test, if the bacterial genome is of a good size
+            size_test = SeqIO.parse(gzip.open(bact, "rt"), "fasta")
+            for record in size_test:
+                if len(record) < 120:
+                    bact.unlink()
+                    chromosomes -= 1
+                    print(f"Record {record.id} removed, genome too small", end="\n", file=sys.stderr)
+            if bact.exists():
+                infile = gzip.open(bact, "rb")
+                outfile.write(infile.read())
+                infile.close()
+                bact.unlink()
+    outfile.close()
+    return chromosomes, True
 
 
 def make(ds_id, data, deamination, outdir="Datasets"):
@@ -135,6 +168,7 @@ def make(ds_id, data, deamination, outdir="Datasets"):
     database = Path("Database")
     datasets = Path(outdir)
     datasets.mkdir(exist_ok=True)
+    bact_chromosomes = 70
 
     for acc in data:
         if f"Sequence_{acc}.fas.gz" not in [x.name for x in database.glob("*.gz")]:
@@ -143,16 +177,16 @@ def make(ds_id, data, deamination, outdir="Datasets"):
                     if download_genome(acc, savedir=database):
                         break
             else:
-                # TODO: download contamination method
-                test = 0
-        if acc == "Contamination":  # TODO: remove, as soon as contamination fasta exists
-            continue
+                while True:
+                    check, bact_chromosomes = download_contaminants()
+                    if check:
+                        break
         print(f"Processing File Sequence_{acc}.fas.gz", end="\r", file=sys.stderr)
         infile = database.joinpath(f"Sequence_{acc}.fas.gz")
         outfile = datasets.joinpath(f"Sequence_{acc}_chunked.fas")
         num_seq = data[acc]["Reads"]
         length = Path("Settings/read_length_dist.tsv")
-        chromosomes = 1 if acc != "Contamination" else 136  # TODO: Check the number
+        chromosomes = 1 if acc != "Contamination" else bact_chromosomes
         minlen = 35
         maxlen = 100
         unif = 0.01
@@ -167,6 +201,6 @@ def make(ds_id, data, deamination, outdir="Datasets"):
                                  inner=True, prop2=deamination[setup]["Center"]['Probability'])
         outfile.unlink()
 
-    merge_snippets(datasets)
+    merge_snippets(datasets, ds_id, data[acc]["Deamination"].keys())
     create_samfiles(datasets)
     return True

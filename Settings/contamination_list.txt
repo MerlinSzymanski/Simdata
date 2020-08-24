@@ -1,0 +1,110 @@
+Abiotrophia defectiva ATCC 49176
+Dolosigranulum pigrum ATCC 51524
+Neisseria bacilliformis ATCC BAA-1200
+Achromobacter xylosoxidans A8 
+Ochrobactrum anthropi ATCC 49188
+Acinetobacter baumannii AB0057
+Eggerthella lenta DSM 2243
+Olsenella profusa F0195 
+Actinobaculum P1 sp. oral taxon 183 F0552
+Eikenella corrodens ATCC 23834
+Oribacterium sinus F0268
+Actinomyces cardiffensis F0333
+Enterobacter cancerogenus ATCC 35316
+Paenibacillus sp. oral taxon 786 D14
+Afipia broomeae ATCC 49717
+Enterococcus casseliflavus EC30
+Parascardovia denticolens DSM 10105
+Aggregatibacter actinomycetemcomitans D17P-2
+Erysipelothrix tonsillarum DSM 14972
+Parvimonas micra ATCC 33270
+Agrobacterium tumefaciens str. C58
+Escherichia coli BW2952
+Peptoniphilus indolicus ATCC 29427
+Alloiococcus otitis ATCC 51267
+Eubacterium infirmum F0142
+Peptostreptococcacea sp. oral taxon 113 W5053
+Alloscardovia omnicolens DSM 21503
+Filifactor alocis ATCC 35896
+Peptostreptococcus anaerobius 653-L
+Anaerococcus lactolyticus ATCC 51172
+Finegoldia magna BVS033A4
+Porphyromonas asaccharolytica DSM 20707
+Anaeroglobus geminatus F0357
+Fusobacterium gonidiaformans 3-1-5R
+Prevotella baroniae DSM 16972
+Arcanobacterium haemolyticum DSM 20595
+Gardnerella vaginalis ATCC 14019
+Propionibacterium acidifaciens DSM 21887
+Atopobium minutum 10063974 
+Gemella bergeriae ATCC 700627
+Proteus mirabilis HI4320_4363 
+Bacillus anthracis A0248
+Granulicatella adiacens ATCC 49175
+Pseudomonas aeruginosa LESB58 
+Bacteroides pyogenes DSM 20611
+Haemophilus aegyptius ATCC 11116
+Pseudoramibacter alactolyticus ATCC 23263
+Bacteroidetes bacterium oral taxon taxon 274 F0058
+Helicobacter pylori India7 
+Pyramidobacter piscolens W5455, DSM 21147
+Bartonella schoenbuchensis m07a 
+Johnsonella ignava ATCC 51276
+Ralstonia pickettii 12D
+Bifidobacterium animalis subsp. Lactis CNCM I-2494
+Jonquetella anthropi E3_33 E1
+Rhodobacter capsulatus SB 1003
+Bordetella pertussis Tohama I
+Kingella denitrificans ATCC 33394
+Rothia aeria F0474 
+Bradyrhizobium elkanii USDA76
+Klebsiella pneumoniae Kp342
+Sanguibacter keddieii DSM 10542
+Brevundimonas diminuta ATCC 11568
+Kytococcus sedentarius DSM 20547
+Scardovia inopinata F0304 
+Bulleidia extructa W1219
+Lachnospiraceae bacterium ACC2
+Selenomonas artemidis DSM 19719
+Burkholderia cepacia GG4 
+Lactobacillus acidophilus NCFM 
+Shuttleworthia satelles DSM 14600
+Candidate division SR1 bacterium MGEHA
+Lactococcus lactis subsp. lactis Il1403
+Simonsiella muelleri ATCC 29453
+Campylobacter concisus strain 13826
+Lautropia mirabilis ATCC 51599
+Slackia exigua ATCC 700122
+Capnocytophaga gingivalis ATCC 33624
+Leptotrichia buccalis ATCC 14201
+Solobacterium moorei W5408 
+Cardiobacterium hominis ATCC 15826
+Listeria monocytogenes 08-5578 
+Catonella morbi ATCC 51271
+Lysinibacillus fusiformis ZC1 
+Staphylococcus aureus subsp. aureus JH1
+Centipeda periodontii DSM 2778
+Megasphaera micronuciformis F0359 
+Stenotrophomonas maltophilia K279a 
+Chloroflexi bacterium oral taxon 439 isolate Chl2
+Mesorhizobium loti MAFF303099 
+Streptococcus agalactiae NEM316
+Comamonas testosteroni KF-1
+Microbacterium sp. oral taxon 186 F0373
+Corynebacterium diphtheriae NCTC 13129
+Mitsuokella multacida DSM 20544
+Treponema denticola ATCC 35405
+Mobiluncus mulieris ATCC 35243
+Turicella otitidis ATCC 51513
+Cronobacter sakazakii ATCC BAA-894
+Mogibacterium timidum ATCC 33093
+Variovorax paradoxus S110 
+Cryptobacterium curtum DSM 15641
+Moraxella catarrhalis RH4 
+Veillonella atypica ACS-134-V-Col7a
+Delftia acidovorans SPH-1
+Mycobacterium leprae Br4923
+Desulfobulbus sp. oral taxon 041 Dsb2
+Mycoplasma fermentans M64 
+Yersinia pestis Antiqua JGI
+Dialister invisus DSM 15470
