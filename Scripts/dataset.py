@@ -8,9 +8,6 @@ import sys
 from bs4 import BeautifulSoup
 from Scripts import (chunk_genome, settings)
 import random
-import itertools
-import os
-import json
 
 
 def create_samfiles(directory):
@@ -170,6 +167,11 @@ def make(ds_id, data, deamination, outdir="Datasets"):
     datasets.mkdir(exist_ok=True)
     bact_chromosomes = 70
 
+    # check, if exists --> check for Last Deamination Regime
+    last = list(deamination.keys())[-1]
+    if datasets.joinpath(f"Dataset_{ds_id}_{last}.sam").exists():
+        print(f"Dataset {ds_id} exists, skip creation")
+        return True
     for acc in data:
         if f"Sequence_{acc}.fas.gz" not in [x.name for x in database.glob("*.gz")]:
             if acc != "Contamination":
