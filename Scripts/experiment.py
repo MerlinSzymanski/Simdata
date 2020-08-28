@@ -8,6 +8,9 @@ def run_megan(dataset, index, wdir):
     cwd = os.getcwd()
     dataset = dataset.absolute()
     index = index.absolute()
+    #Megan doesnt run from cache... so dont execute, if dir exists
+    if wdir.exists():
+        return True
     wdir.mkdir(exist_ok=True, parents=True)
     os.chdir(wdir.absolute())
 
