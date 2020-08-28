@@ -1,5 +1,3 @@
-import os
-
 EMAIL = "merlin.szymanski@gmail.com"
 
 NEXTFLOW = "/home/merlin_szymanski/.nextflow/assets/merlin/sediment_nf/main.nf"
