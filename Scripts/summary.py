@@ -63,14 +63,28 @@ def summarize_kraken(location, records, ds_id, regime, kmer, krf):
         if len(extracted_bam) < 1:
             continue
         for record in extract_records_from_bam(extracted_bam[0]):
-            rec_seq_dict[record].extracted = True
-            rec_seq_dict[record].assigned_family = family.name
+            try:
+                rec_seq_dict[record].extracted = True
+                rec_seq_dict[record].assigned_family = family.name
+            except KeyError:
+                print(f"Error in ExtractedBam record: {record}")
         for aligned_bam in [x for x in family.joinpath("aligned").glob("*[!_deduped].bam")]:
             for record in extract_records_from_bam(aligned_bam):
-                rec_seq_dict[record].aligned = True
-        for bedfiltered_bam in [x for x in family.joinpath("bedfiltered").glob("*.bam")]:
+                try:
+                    rec_seq_dict[record].aligned = True
+                except KeyError:
+                    print(f"Error in aligned Record: {record}")
+        for bedfiltered_bam in [x for x in family.joinpath("bed").glob("*.bam")]:
             for record in extract_records_from_bam(bedfiltered_bam):
-                rec_seq_dict[record].bedfiltered = True
+                try:
+                    rec_seq_dict[record].bedfiltered = True
+                except KeyError:
+                    # TODO: find reason for "c" at the end of some sequence-headers only in the bedfiltered file
+                    try:
+                        rec_seq_dict[record[:-1]].bedfiltered = True
+                    except:
+                        print(f"Error in bed-filtered record: {record}", file=sys.stderr)
+
 
     return list(rec_seq_dict.values())
 
@@ -99,18 +113,15 @@ def main(ds_id, regime, dataset_dir="Datasets", savedir="Summary", experiment_di
     all_seqs = []
 
     records = [x.split("\t")[0] for x in open(dataset_dir.joinpath(f"Dataset_{ds_id}_{regime}.sam"), "r")]
-    print(f"Records:{len(records)}")
     location = experiment_dir.joinpath(f"Dataset{ds_id}").joinpath(f"Regime{regime}")
 
     for kmer in kmers:
         if kmer == "MEGAN":
             seqs = summarize_megan(location, records, ds_id, regime)
-            print(len(seqs))
             all_seqs.extend(seqs)
         else:
             for krf in kfilter:
                 seqs = summarize_kraken(location, records, ds_id, regime, kmer, krf)
-                print(len(seqs))
                 all_seqs.extend(seqs)
 
     savedir.mkdir(exist_ok=True, parents=True)
