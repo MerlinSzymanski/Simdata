@@ -18,7 +18,6 @@ def main():
     #Create the datasets
     for record in data:
         datasets.append(record)
-
         dataset.make(record, data[record], deamination)
 
     #Now run the experiments

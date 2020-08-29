@@ -3,8 +3,9 @@ from . import settings
 import pysam
 import requests
 from bs4 import BeautifulSoup
+import json
 
-taxonomy = {}
+taxonomy = dict(json.load(open("Settings/family_accession_dict.json")))
 
 
 class Sequence:
@@ -14,48 +15,17 @@ class Sequence:
         self.regime = regime
         self.kmer = kmer
         self.kraken_filter = kraken_filter
-        self.accession = None
-        self.original_family = None
+        self.accession = description.split("|")[0]
         self.assigned_family = None
         self.extracted = False
         self.aligned = False
         self.bedfiltered = False
 
-    def get_accession_from_description(self):
-        return self.description.split("|")[0]
-
-    def get_taxonomy_from_accession(self):
-        if self.accession is None:
-            self.accession = self.get_accession_from_description()
-        if self.accession in taxonomy:
-            self.original_family = taxonomy[self.accession]
-            return True
-        else:
-            soup = BeautifulSoup(
-                requests.get(
-                    'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=nucleotide&db=taxonomy&id=' +
-                    self.accession
-                ).text, features="html.parser"
-            )
-            try:
-                tax_id = soup.find("linksetdb").find("id").contents[0]
-                soup2 = BeautifulSoup(
-                    requests.get(
-                        f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=taxonomy&id={tax_id}"
-                    ).text, features="html.parser"
-                )
-                for taxon in soup2.find("lineageex").find_all("taxon"):
-                    if taxon.rank.string == "family":
-                        taxonomy[self.accession] = taxon.scientificname.string
-                        self.original_family = taxon.scientificname.string
-                        return True
-                    else:
-                        self.original_family = "Unknown"
-                        return False
-            except AttributeError:
-                self.original_family = "Unknown"
-                return False
-
+    def get_family(self):
+        try:
+            return taxonomy[self.accession]
+        except KeyError:
+            return "Contamination"
 
 def extract_records_from_bam(samfile):
     try:
@@ -86,10 +56,8 @@ def summarize_megan(location, records, ds_id, regime):
 
 def summarize_kraken(location, records, ds_id, regime, kmer, krf):
     print(f"Summarize Kraken: Dataset{ds_id}, Regime{regime}, Kmer{kmer}, Krakenfilter {krf}")
-    print(f"Records in kraken: {len(records)}")
     rec_seq_dict = {rec: Sequence(rec, ds_id, regime, kmer, krf) for rec in records}
     run_dir = location.joinpath(f"Kmer{kmer}").joinpath(f"kraken_filter_{krf}")
-    print(f"ref_seq_dict: {len(rec_seq_dict)}")
     for family in run_dir.joinpath("out").iterdir():
         extracted_bam = [x for x in family.glob("*.bam")]
         if len(extracted_bam) < 1:
@@ -153,7 +121,7 @@ def main(ds_id, regime, dataset_dir="Datasets", savedir="Summary", experiment_di
         )
         for seq in all_seqs:
             outfile.write(
-                f"{seq.description}\t{seq.get_accession_from_description()}\t{seq.dataset}\t{seq.regime}\t{seq.kmer}\t{seq.kraken_filter}\t"
-                f"{seq.original_family}\t{seq.assigned_family}\t{seq.extracted}\t{seq.aligned}\t{seq.bedfiltered}\n"
+                f"{seq.description}\t{seq.accession}\t{seq.dataset}\t{seq.regime}\t{seq.kmer}\t{seq.kraken_filter}\t"
+                f"{seq.get_family()}\t{seq.assigned_family}\t{seq.extracted}\t{seq.aligned}\t{seq.bedfiltered}\n"
             )
     return True
