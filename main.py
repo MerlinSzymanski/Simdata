@@ -19,14 +19,12 @@ def main():
     for record in data:
         datasets.append(record)
         dataset.make(record, data[record], deamination)
-    """
     #Now run the experiments
     for ds in datasets:
         for regime in set(regimes):
             for kmer in set(kmers):
                 for kf in kraken_filter:
                     experiment.main(ds, regime, kmer, kf)
-    """
     #and the summary:
     for ds in datasets:
         for regime in set(regimes):
