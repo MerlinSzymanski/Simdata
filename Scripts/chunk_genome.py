@@ -135,9 +135,10 @@ def main(infile, outfile, num_seq, length, chromosomes=None, min_length=35, max_
             print(f"Returning only {len(all_chunks)} sequences for {record.id}", file=sys.stderr)
 
     # create a new header which includes the read pos, read length
-    record_it = (SeqRecord.SeqRecord(
-        record.seq, id="{}|{}_{}".format(record.id, pos, len(record)),
-        description=" ".join(record.description.split(' ')[1:])) for record, pos in sort_recs(all_chunks))
+    record_it = (
+            SeqRecord.SeqRecord(
+                record.seq, id=f"{record.id}|{pos}_{len(record)}_{n}",
+                description=" ".join(record.description.split(' ')[1:])) for n, (record, pos) in enumerate(sort_recs(all_chunks)))
 
     with open(outfile, 'w') as file_out:
         SeqIO.write(record_it, file_out, "fasta")
