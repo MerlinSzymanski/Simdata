@@ -19,6 +19,7 @@ class Sequence:
         self.assigned_family = None
         self.extracted = False
         self.aligned = False
+        self.deduped = False
         self.bedfiltered = False
 
     def get_family(self):
@@ -74,6 +75,16 @@ def summarize_kraken(location, records, ds_id, regime, kmer, krf):
                     rec_seq_dict[record].aligned = True
                 except KeyError:
                     print(f"Error in aligned Record: {record}")
+        for deduped_bam in [x for x in family.joinpath("aligned").glob("*_deduped.bam")]:
+            for record in extract_records_from_bam(deduped_bam):
+                try:
+                    rec_seq_dict[record].deduped = True
+                except KeyError:
+                    # TODO: find reason for "c" at the end of some sequence-headers only in the bedfiltered file
+                    try:
+                        rec_seq_dict[record[:-1]].deduped = True
+                    except:
+                        print(f"Error in deduped record: {record}", file=sys.stderr)
         for bedfiltered_bam in [x for x in family.joinpath("bed").glob("*.bam")]:
             for record in extract_records_from_bam(bedfiltered_bam):
                 try:
@@ -128,11 +139,11 @@ def main(ds_id, regime, dataset_dir="Datasets", savedir="Summary", experiment_di
     with open(savedir.joinpath(f"Summary_Dataset{ds_id}_Regime{regime}.tsv"), "w") as outfile:
         outfile.write(
             "Description\tAccession\tDataset\tRegime\tKmer\tKrakenfilter\tFamily\t"
-            "Assigned_Fam\tExtracted\tAligned\tBedfiltered\n"
+            "Assigned_Fam\tExtracted\tAligned\tDeduped\tBedfiltered\n"
         )
         for seq in all_seqs:
             outfile.write(
-                f"{seq.description}\t{seq.accession}\t{seq.dataset}\t{seq.regime}\t{seq.kmer}\t{seq.kraken_filter}\t"
-                f"{seq.get_family()}\t{seq.assigned_family}\t{seq.extracted}\t{seq.aligned}\t{seq.bedfiltered}\n"
+                f"{seq.description}\t{seq.accession}\t{seq.dataset}\t{seq.regime}\t{seq.kmer}\t{str(seq.kraken_filter)}\t"
+                f"{seq.get_family()}\t{seq.assigned_family}\t{seq.extracted}\t{seq.aligned}\t{seq.deduped}\t{seq.bedfiltered}\n"
             )
     return True
