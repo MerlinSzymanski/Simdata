@@ -4,3 +4,6 @@ Database/
 *__pycache__*
 Experiments/
 Summary/
+Notebooks/*.csv
+Notebooks/*.png
+
